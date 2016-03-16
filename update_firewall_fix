@@ -1,0 +1,20 @@
+#!/bin/sh
+
+wan_ip=$(ifconfig pppoe-WAN1 | grep 'inet addr:' | cut -d: -f2 | awk '{print $1}')
+if [ ${#wan_ip} -lt 5 ]; then
+        exit 1
+fi
+
+prev_ip=$(cat /tmp/wan_ip)
+if [ "$wan_ip" == "$prev_ip" ]; then
+        echo "IP unchanged"
+        exit 0
+fi
+
+echo "New IP: $wan_ip"
+prev_rule=$(iptables -t nat -L --line-numbers | grep 'REDIRECT.*1082' | awk '{print $1}')
+if [ ${#prev_rule} -gt 0 ];then
+        iptables -t nat -D PREROUTING $prev_rule
+fi
+iptables -t nat -I PREROUTING -p tcp --src 192.168.0.0/16 --dst $wan_ip -m multiport --dports 80,22 -j REDIRECT --to-port 1082
+echo $wan_ip > /tmp/wan_ip
