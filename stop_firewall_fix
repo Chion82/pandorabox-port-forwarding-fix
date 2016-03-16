@@ -1,0 +1,11 @@
+#!/bin/sh
+
+prev_rule=$(iptables -t nat -L --line-numbers | grep 'REDIRECT.*1082' | awk '{print $1}')
+if [ ${#prev_rule} -gt 0 ];then
+        iptables -t nat -D PREROUTING $prev_rule
+fi
+prev_ssredir=$(cat /tmp/fix_ssredir)
+if [ ${#prev_ssredir} -gt 0 ];then
+        kill -9 $prev_ssredir
+        rm /tmp/fix_ssredir
+fi
