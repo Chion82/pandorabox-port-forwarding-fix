@@ -1,0 +1,22 @@
+#!/bin/sh
+ss_server_ip=X.X.X.X
+ss_server_port=XX
+ss_method=rc4-md5
+ss_key=KEY
+
+prev_rule=$(iptables -t nat -L --line-numbers | grep 'REDIRECT.*1082' | awk '{print $1}')
+if [ ${#prev_rule} -gt 0 ];then
+        iptables -t nat -D PREROUTING $prev_rule
+fi
+prev_ssredir=$(cat /tmp/fix_ssredir)
+if [ ${#prev_ssredir} -gt 0 ];then
+        kill -9 $prev_ssredir
+        rm /tmp/fix_ssredir
+fi
+
+wan_ip=$(ifconfig pppoe-WAN1 | grep 'inet addr:' | cut -d: -f2 | awk '{print $1}')
+if [ ${#wan_ip} -lt 5 ]; then
+        exit 1
+fi
+/usr/bin/ss-redir -s $ss_server_ip -p $ss_server_port -k $ss_key -m $ss_method -b 0.0.0.0 -l 1082 -f /tmp/fix_ssredir &
+iptables -t nat -I PREROUTING -p tcp --src 192.168.0.0/16 --dst $wan_ip -m multiport --dports 80,22 -j REDIRECT --to-port 1082
